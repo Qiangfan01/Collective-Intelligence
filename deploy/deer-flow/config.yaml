@@ -21,6 +21,21 @@ max_recursion_limit: 100
 # ── 模型 ─────────────────────────────────────────────────
 # 二选一，注释掉另一个。都要求 OpenAI 兼容。
 models:
+  # 主模型：Claude Opus 5.5（排第一即为默认模型）
+  # 参考上游 Sonnet 5.5 示例：不要设置 thinking/temperature/top_p/top_k，会被拒绝。
+  # model ID 按上游命名规律填写，首次启动时用 Anthropic /v1/models 核对。
+  - name: claude-opus-5-5
+    display_name: Claude Opus 5.5
+    use: langchain_anthropic:ChatAnthropic
+    model: claude-opus-5-5
+    api_key: $ANTHROPIC_API_KEY
+    default_request_timeout: 600.0
+    max_retries: 2
+    max_tokens: 16000
+    context_window: 200000
+    supports_vision: true
+
+  # 备用：DeepSeek（火山方舟），不需要可删除
   - name: deepseek-v3
     display_name: DeepSeek V3.2
     use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
