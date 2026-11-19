@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 运行时数据
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+audit/
+
+# 环境与密钥
+.env
+.env.local
+*.pem
+*.key
+credentials/
+
+# DeerFlow 运行时
+.deer-flow/
+deploy/deer-flow/state/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时
+.tmp/
+*.log

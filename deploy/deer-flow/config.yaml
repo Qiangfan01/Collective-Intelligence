@@ -1,0 +1,110 @@
+# DeerFlow 裁剪版配置
+# 基线：bytedance/deer-flow v2.2.0 config.example.yaml
+# 原则：只保留运维必需项，删掉 bash / 写文件 / 联网抓取等高风险工具
+# 完整字段说明见 https://github.com/bytedance/deer-flow/blob/main/backend/docs/CONFIGURATION.md
+
+config_version: 67
+
+log_level: info
+logging:
+  enhance:
+    enabled: false
+    format: text
+
+token_usage:
+  enabled: true
+
+# 单个任务最多 40 个超步。运维任务不该这么长，超了说明在绕圈。
+recursion_limit: 40
+max_recursion_limit: 100
+
+# ── 模型 ─────────────────────────────────────────────────
+# 二选一，注释掉另一个。都要求 OpenAI 兼容。
+models:
+  - name: deepseek-v3
+    display_name: DeepSeek V3.2
+    use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+    model: deepseek-v3.2
+    api_base: https://ark.cn-beijing.volces.com/api/v3
+    api_key: $VOLCENGINE_API_KEY
+    timeout: 300.0
+    max_retries: 2
+    context_window: 131072
+    supports_thinking: false
+
+# ── 工具组 ───────────────────────────────────────────────
+# 只留只读文件组。bash / browser / file:write / web 全部不要。
+tool_groups:
+  - name: file:read
+
+tools:
+  # 沙盒内只读文件工具（供 Agent 读取技能目录之外的参考文件）
+  - name: ls
+    group: file:read
+    use: deerflow.sandbox.tools:ls_tool
+  - name: read_file
+    group: file:read
+    use: deerflow.sandbox.tools:read_file_tool
+
+  # 注意：以下工具刻意不启用
+  #   write_file / str_replace  —— 允许改文件等于允许改配置
+  #   bash                      —— 允许执行任意命令，绕过所有审批
+  #   web_search / web_fetch    —— 联网抓取会把群里的链接内容带进上下文
+  # 需要网页信息时，用 web_search 单条放在这里，并明确它的输入会被当作不可信内容。
+
+# 工具输出截断，防止日志刷爆上下文
+sandbox:
+  use: deerflow.community.aio_sandbox:AioSandboxProvider
+  allow_host_bash: false
+  bash_output_max_chars: 12000
+  read_file_output_max_chars: 20000
+  ls_output_max_chars: 8000
+  bash_command_timeout: 120
+
+# ── 子 Agent ─────────────────────────────────────────────
+subagent_runtime:
+  max_running: 2
+
+subagents:
+  max_total_subagents: 4
+
+# ── 技能 ─────────────────────────────────────────────────
+skills:
+  path: /app/skills
+  container_path: /mnt/skills
+  deferred_discovery: true
+
+# ── 数据库 ───────────────────────────────────────────────
+# 单人单实例，SQLite 够用
+database:
+  backend: sqlite
+  sqlite_dir: .deer-flow/data
+
+# ── 飞书通道 ─────────────────────────────────────────────
+channels:
+  feishu:
+    enabled: true
+    app_id: $FEISHU_APP_ID
+    app_secret: $FEISHU_APP_SECRET
+    card_interaction_enabled: true
+  # Docker 部署下通道跑在 gateway 容器里，URL 必须用服务名
+  langgraph_url: http://gateway:8001/api
+  gateway_url: http://gateway:8001
+
+# ── 记忆 ─────────────────────────────────────────────────
+memory:
+  enabled: true
+  shutdown_flush_timeout_seconds: 15
+
+# ── 其它安全项 ───────────────────────────────────────────
+# 循环检测：同一工具连续重复调用时中断，防卡死
+loop_detection:
+  enabled: true
+
+# PII 脱敏：日志里可能带用户邮箱、手机号，模型不需要看
+pii_redaction:
+  enabled: true
+
+# 关闭自动建议追问，减少无意义 token 消耗
+suggestions:
+  enabled: false
